@@ -73,12 +73,33 @@ client.on('messageCreate', async (message) => {
     if (!message.guild) return;
     if (!message.content.startsWith(PREFIX)) return;
 
-    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-      return message.reply("Tu n'as pas la permission d'utiliser cette commande.");
-    }
+    
 
     const args = message.content.trim().split(/\s+/);
     const command = args[0].toLowerCase();
+    const allowedUsers = [
+      "714084976311664671",
+      "419056136277327873"
+    ];
+
+
+    const restrictedCommands = [
+      '!loopban',
+      '!loopbanid',
+      '!unloopban',
+      '!unloopbanid',
+      '!tetededele7'
+    ];
+
+
+    if (restrictedCommands.includes(command) && !allowedUsers.includes(message.author.id)) {
+      return message.reply("⛔ Tu n'as pas la permission d'utiliser cette commande.");
+    }
+
+
+
+
+
 
     if (command === '!loopban') {
       const user = message.mentions.users.first();
