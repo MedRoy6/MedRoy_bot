@@ -79,7 +79,8 @@ client.on('messageCreate', async (message) => {
     const command = args[0].toLowerCase();
     const allowedUsers = [
       "714084976311664671",
-      "419056136277327873"
+      "419056136277327873",
+      "809126241256079381"
     ];
 
 
