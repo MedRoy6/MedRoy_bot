@@ -188,7 +188,6 @@ client.on('messageCreate', async (message) => {
           if (member.id === message.author.id) continue;
 
       
-          if (member.user.bot) continue;
 
       
           if (!loopbanList.has(id)) {
