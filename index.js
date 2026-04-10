@@ -71,7 +71,7 @@ function saveWarnsData(warnsData) {
     console.error('Erreur sauvegarde warns.json :', error);
   }
 }
-
+const warnsData = loadWarnsData();
 
 const loopbanList = loadLoopbanData();
 
