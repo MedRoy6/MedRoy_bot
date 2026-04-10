@@ -101,6 +101,19 @@ if (configData.antiMassMention === undefined) {
   configData.antiMassMention = false;
 }
 
+async function sendLog(guild, content) {
+  try {
+    if (!configData.logsChannelId) return;
+
+    const channel = guild.channels.cache.get(configData.logsChannelId);
+    if (!channel) return;
+
+    await channel.send(content);
+  } catch (error) {
+    console.error('Erreur sendLog :', error);
+  }
+}
+
 
 const warnsData = loadWarnsData();
 
@@ -128,6 +141,26 @@ client.on('guildMemberAdd', async (member) => {
 
   } catch (error) {
     console.error(`Erreur guildMemberAdd :`, error);
+  }
+});
+
+
+client.on('messageDelete', async (message) => {
+  try {
+    if (!message.guild) return;
+    if (message.author?.bot) return;
+
+    const content = message.content?.trim() || '[Aucun contenu ou embed/fichier]';
+
+    await sendLog(
+      message.guild,
+      `🗑️ Message supprimé\n` +
+      `Auteur : ${message.author.tag}\n` +
+      `Salon : ${message.channel}\n` +
+      `Contenu : ${content}`
+    );
+  } catch (error) {
+    console.error('Erreur messageDelete :', error);
   }
 });
 
@@ -232,6 +265,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await member.ban({ reason: `Ban par ${message.author.tag}` });
+        await sendLog(
+          message.guild,
+          `🔨 Ban\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})`
+        );
         return message.reply(`✅ ${member.user.tag} a été banni.`);
       } catch (error) {
         console.error(error);
@@ -251,6 +288,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await message.guild.members.unban(userId);
+        await sendLog(
+          message.guild,
+          `🔓 Unban\nModérateur : ${message.author.tag}\nCible ID : ${userId}`
+        );
         return message.reply(`✅ Utilisateur ${userId} débanni.`);
       } catch (error) {
         console.error(error);
@@ -276,6 +317,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await member.kick(`Kick par ${message.author.tag}`);
+        await sendLog(
+          message.guild,
+          `👢 Kick\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})`
+        );
         return message.reply(`✅ ${member.user.tag} a été expulsé.`);
       } catch (error) {
         console.error(error);
@@ -301,6 +346,10 @@ client.on('messageCreate', async (message) => {
       try {
         await member.ban({ deleteMessageSeconds: 86400, reason: `Softban par ${message.author.tag}` });
         await message.guild.members.unban(member.id);
+        await sendLog(
+          message.guild,
+          `💥 Softban\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})`
+        );
         return message.reply(`✅ ${member.user.tag} a été softban.`);
       } catch (error) {
         console.error(error);
@@ -332,6 +381,10 @@ client.on('messageCreate', async (message) => {
       });
 
       saveWarnsData(warnsData);
+      await sendLog(
+        message.guild,
+        `⚠️ Warn\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})\nRaison : ${reason}`
+      );
 
       return message.reply(`✅ ${member.user.tag} a été warn. Total : ${warnsData[member.id].length}`);
     }
@@ -385,6 +438,10 @@ client.on('messageCreate', async (message) => {
       userWarns.splice(warnIndex - 1, 1);
       warnsData[member.id] = userWarns;
       saveWarnsData(warnsData);
+      await sendLog(
+        message.guild,
+        `➖ Unwarn\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})\nWarn supprimé : ${warnIndex}`
+      );
 
       return message.reply(`✅ Warn ${warnIndex} supprimé pour ${member.user.tag}.`);
     }
@@ -402,6 +459,10 @@ client.on('messageCreate', async (message) => {
 
       warnsData[member.id] = [];
       saveWarnsData(warnsData);
+      await sendLog(
+        message.guild,
+        `🧹 Clearwarns\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})`
+      );
 
       return message.reply(`✅ Tous les warns de ${member.user.tag} ont été supprimés.`);
     }
@@ -420,6 +481,10 @@ client.on('messageCreate', async (message) => {
 
       configData.muteRoleId = role.id;
       saveConfigData(configData);
+      await sendLog(
+        message.guild,
+        `🎭 Set mute role\nModérateur : ${message.author.tag}\nRôle : ${role.name} (${role.id})`
+      );
 
       return message.reply(`✅ Rôle mute défini sur ${role.name}`);
     }
@@ -452,6 +517,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await member.roles.add(muteRole, `Mute par ${message.author.tag}`);
+        await sendLog(
+          message.guild,
+          `🔇 Mute\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})`
+        );
         return message.reply(`✅ ${member.user.tag} a été mute.`);
       } catch (error) {
         console.error(error);
@@ -486,6 +555,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await member.roles.remove(muteRole, `Unmute par ${message.author.tag}`);
+        await sendLog(
+          message.guild,
+          `🔊 Unmute\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})`
+        );
         return message.reply(`✅ ${member.user.tag} a été unmute.`);
       } catch (error) {
         console.error(error);
@@ -526,6 +599,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await member.roles.add(muteRole, `Tempmute par ${message.author.tag} pour ${minutes} min`);
+        await sendLog(
+          message.guild,
+          `⏳ Tempmute\nModérateur : ${message.author.tag}\nCible : ${member.user.tag} (${member.id})\nDurée : ${minutes} minute(s)`
+        );
         message.reply(`✅ ${member.user.tag} a été mute pour ${minutes} minute(s).`);
 
         setTimeout(async () => {
@@ -533,6 +610,10 @@ client.on('messageCreate', async (message) => {
             const target = await message.guild.members.fetch(member.id).catch(() => null);
             if (target && target.roles.cache.has(muteRole.id)) {
               await target.roles.remove(muteRole, 'Fin du tempmute');
+              await sendLog(
+                message.guild,
+                `⌛ Fin tempmute\nCible : ${target.user.tag} (${target.id})`
+              );
             }
           } catch (error) {
             console.error('Erreur fin tempmute :', error);
@@ -559,6 +640,10 @@ client.on('messageCreate', async (message) => {
 
       try {
         await message.channel.bulkDelete(amount, true);
+        await sendLog(
+          message.guild,
+          `🧽 Clear\nModérateur : ${message.author.tag}\nSalon : ${message.channel}\nNombre : ${amount}`
+        );
         const confirm = await message.channel.send(`✅ ${amount} message(s) supprimé(s).`);
         setTimeout(() => confirm.delete().catch(() => {}), 3000);
       } catch (error) {
@@ -593,6 +678,10 @@ client.on('messageCreate', async (message) => {
         setTimeout(() => confirm.delete().catch(() => {}), 4000);
       } catch (error) {
         console.error(error);
+        await sendLog(
+          message.guild,
+          `🗑️ Purge\nModérateur : ${message.author.tag}\nSalon : ${message.channel}\nMessages supprimés : ${deleted}`
+        );
         return message.reply("❌ Erreur pendant la purge.");
       }
     }
@@ -607,6 +696,10 @@ client.on('messageCreate', async (message) => {
         await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
           SendMessages: false
         });
+        await sendLog(
+          message.guild,
+          `🔒 Lock salon\nModérateur : ${message.author.tag}\nSalon : ${message.channel}`
+        );
 
         return message.reply(`🔒 Salon verrouillé.`);
       } catch (error) {
@@ -625,6 +718,10 @@ client.on('messageCreate', async (message) => {
         await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
           SendMessages: true
         });
+        await sendLog(
+          message.guild,
+          `🔓 Unlock salon\nModérateur : ${message.author.tag}\nSalon : ${message.channel}`
+        );
 
         return message.reply(`🔓 Salon déverrouillé.`);
       } catch (error) {
@@ -658,6 +755,10 @@ client.on('messageCreate', async (message) => {
         console.error(error);
         return message.reply("❌ Erreur pendant le lockall.");
       }
+    await sendLog(
+      message.guild,
+      `🔒 Lockall\nModérateur : ${message.author.tag}`
+    );
     }
 
 
@@ -686,6 +787,10 @@ client.on('messageCreate', async (message) => {
         console.error(error);
         return message.reply("❌ Erreur pendant le unlockall.");
       }
+    await sendLog(
+      message.guild,
+      `🔓 Unlockall\nModérateur : ${message.author.tag}`
+    );
     }
 
 
@@ -730,6 +835,10 @@ client.on('messageCreate', async (message) => {
 
       configData.serverLocked = true;
       saveConfigData(configData);
+      await sendLog(
+        message.guild,
+        `🚫 Lockserver\nModérateur : ${message.author.tag}\nMode : kick auto des nouveaux membres`
+      );
 
       return message.reply("🔒 Serveur verrouillé : les nouveaux membres seront automatiquement kick.");
     }
@@ -742,6 +851,10 @@ client.on('messageCreate', async (message) => {
 
       configData.serverLocked = false;
       saveConfigData(configData);
+      await sendLog(
+        message.guild,
+        `✅ Unlockserver\nModérateur : ${message.author.tag}`
+      );
 
       return message.reply("🔓 Serveur déverrouillé : les membres peuvent rejoindre normalement.");
 
@@ -755,6 +868,10 @@ client.on('messageCreate', async (message) => {
 
       configData.antiMassMention = true;
       saveConfigData(configData);
+      await sendLog(
+        message.guild,
+        `🚨 Anti-mass mention ACTIVÉ\nModérateur : ${message.author.tag}`
+      );
 
       return message.reply("✅ Anti-mass mention ACTIVÉ.");
     }
@@ -767,9 +884,35 @@ client.on('messageCreate', async (message) => {
 
       configData.antiMassMention = false;
       saveConfigData(configData);
+      await sendLog(
+        message.guild,
+        `🚨 Anti-mass mention DÉSACTIVÉ\nModérateur : ${message.author.tag}`
+      );
 
       return message.reply("❌ Anti-mass mention DÉSACTIVÉ.");
     }
+
+
+    if (command === '!setlogs') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const channel = message.mentions.channels.first();
+      if (!channel) {
+        return message.reply("Utilise : `!setlogs #salon`");
+      }
+
+      configData.logsChannelId = channel.id;
+      saveConfigData(configData);
+      await sendLog(
+        message.guild,
+        `📝 Set logs\nModérateur : ${message.author.tag}\nSalon : ${channel}`
+      );
+
+      return message.reply(`✅ Salon de logs défini sur ${channel}`);
+    }
+
 
 
     if (command === '!help') {
@@ -800,6 +943,7 @@ client.on('messageCreate', async (message) => {
         `!antimassmention\n` +
         `!noantimassmention\n\n` +
         `Config :\n` +
+        `!setlogs #salon\n` +
         `!setmuterole @role\n\n` +
         `Infos :\n` +
         `!userinfo @user\n` +
