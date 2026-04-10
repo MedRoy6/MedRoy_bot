@@ -15,7 +15,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent
   ]
 });
-
+const WARNS_FILE = path.join(__dirname, 'warns.json');
 const PREFIX = '!';
 const DATA_FILE = path.join(__dirname, 'loopban.json');
 
@@ -49,6 +49,29 @@ function saveLoopbanData(loopbanList) {
     console.error('Erreur sauvegarde loopban.json :', error);
   }
 }
+
+function loadWarnsData() {
+  try {
+    if (!fs.existsSync(WARNS_FILE)) {
+      fs.writeFileSync(WARNS_FILE, JSON.stringify({}, null, 2));
+    }
+
+    const raw = fs.readFileSync(WARNS_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Erreur chargement warns.json :', error);
+    return {};
+  }
+}
+
+function saveWarnsData(warnsData) {
+  try {
+    fs.writeFileSync(WARNS_FILE, JSON.stringify(warnsData, null, 2));
+  } catch (error) {
+    console.error('Erreur sauvegarde warns.json :', error);
+  }
+}
+
 
 const loopbanList = loadLoopbanData();
 
@@ -224,6 +247,103 @@ client.on('messageCreate', async (message) => {
       }
     }
 
+
+    if (command === '!warn') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!warn @utilisateur raison`");
+      }
+
+      const reason = args.slice(2).join(' ') || 'Aucune raison';
+
+      if (!warnsData[member.id]) {
+        warnsData[member.id] = [];
+      }
+
+      warnsData[member.id].push({
+        reason,
+        moderator: message.author.tag,
+        timestamp: new Date().toISOString()
+      });
+
+      saveWarnsData(warnsData);
+
+      return message.reply(`✅ ${member.user.tag} a été warn. Total : ${warnsData[member.id].length}`);
+    }
+
+
+
+    if (command === '!warnings') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!warnings @utilisateur`");
+      }
+
+      const userWarns = warnsData[member.id] || [];
+
+      if (userWarns.length === 0) {
+        return message.reply(`ℹ️ ${member.user.tag} n'a aucun warn.`);
+      }
+
+      const text = userWarns
+        .map((warn, index) => `${index + 1}. ${warn.reason} | par ${warn.moderator}`)
+        .join('\n');
+
+      return message.reply(`Warns de ${member.user.tag} :\n${text}`);
+    }
+
+
+    if (command === '!unwarn') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!unwarn @utilisateur numéro`");
+      }
+
+      const warnIndex = parseInt(args[2], 10);
+      if (isNaN(warnIndex) || warnIndex < 1) {
+        return message.reply("❌ Donne un numéro de warn valide.");
+      }
+
+      const userWarns = warnsData[member.id] || [];
+      if (warnIndex > userWarns.length) {
+        return message.reply("❌ Ce warn n'existe pas.");
+      }
+
+      userWarns.splice(warnIndex - 1, 1);
+      warnsData[member.id] = userWarns;
+      saveWarnsData(warnsData);
+
+      return message.reply(`✅ Warn ${warnIndex} supprimé pour ${member.user.tag}.`);
+    }
+
+
+    if (command === '!clearwarns') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!clearwarns @utilisateur`");
+      }
+
+      warnsData[member.id] = [];
+      saveWarnsData(warnsData);
+
+      return message.reply(`✅ Tous les warns de ${member.user.tag} ont été supprimés.`);
+    }
 
 
     if (command === '!unloopban') {
