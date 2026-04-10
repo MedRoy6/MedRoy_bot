@@ -600,6 +600,127 @@ client.on('messageCreate', async (message) => {
     }
 
 
+    if (command === '!lockserver') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      try {
+        let count = 0;
+
+        for (const [, channel] of message.guild.channels.cache) {
+          if (!channel.isTextBased()) continue;
+          if (!channel.permissionOverwrites) continue;
+
+          await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+            SendMessages: false
+          }).catch(() => null);
+
+          count++;
+        }
+
+        return message.reply(`🔒 Serveur verrouillé sur ${count} salon(s).`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le lockserver.");
+      }
+    }
+
+
+
+    if (command === '!unlockserver') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      try {
+        let count = 0;
+
+        for (const [, channel] of message.guild.channels.cache) {
+          if (!channel.isTextBased()) continue;
+          if (!channel.permissionOverwrites) continue;
+
+          await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+            SendMessages: true
+          }).catch(() => null);
+
+          count++;
+        }
+
+        return message.reply(`🔓 Serveur déverrouillé sur ${count} salon(s).`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le unlockserver.");
+      }
+    }
+
+
+
+    if (command === '!userinfo') {
+      const member = message.mentions.members.first() || message.member;
+
+      const roles = member.roles.cache
+        .filter(role => role.id !== message.guild.id)
+        .map(role => role.name)
+        .join(', ') || 'Aucun';
+
+      return message.reply(
+        `Infos de ${member.user.tag}\n` +
+        `ID : ${member.id}\n` +
+        `Compte créé : <t:${Math.floor(member.user.createdTimestamp / 1000)}:F>\n` +
+        `A rejoint le serveur : <t:${Math.floor(member.joinedTimestamp / 1000)}:F>\n` +
+        `Rôles : ${roles}`
+      );
+    }
+
+
+
+    if (command === '!serverinfo') {
+      return message.reply(
+        `Infos serveur\n` +
+        `Nom : ${message.guild.name}\n` +
+        `ID : ${message.guild.id}\n` +
+        `Owner ID : ${message.guild.ownerId}\n` +
+        `Membres : ${message.guild.memberCount}\n` +
+        `Salons : ${message.guild.channels.cache.size}\n` +
+        `Rôles : ${message.guild.roles.cache.size}\n` +
+        `Créé le : <t:${Math.floor(message.guild.createdTimestamp / 1000)}:F>`
+      );
+    }
+
+
+
+    if (command === '!help') {
+      return message.reply(
+        `Commandes disponibles :\n\n` +
+        `Modération :\n` +
+        `!ban @user\n` +
+        `!unban ID\n` +
+        `!kick @user\n` +
+        `!softban @user\n` +
+        `!warn @user raison\n` +
+        `!warnings @user\n` +
+        `!unwarn @user numéro\n` +
+        `!clearwarns @user\n` +
+        `!mute @user\n` +
+        `!unmute @user\n` +
+        `!tempmute @user minutes\n\n` +
+        `Salon / serveur :\n` +
+        `!clear nombre\n` +
+        `!purge\n` +
+        `!lock\n` +
+        `!unlock\n` +
+        `!lockserver\n` +
+        `!unlockserver\n\n` +
+        `Config :\n` +
+        `!setmuterole @role\n\n` +
+        `Infos :\n` +
+        `!userinfo @user\n` +
+        `!serverinfo\n\n`
+
+      );
+    }
+
 
     if (command === '!unloopban') {
       const user = message.mentions.users.first();
