@@ -131,7 +131,9 @@ client.on('messageCreate', async (message) => {
     }
 
 
-    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+
+    if (command === '!ban') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
         return message.reply("⛔ Pas la permission.");
       }
 
