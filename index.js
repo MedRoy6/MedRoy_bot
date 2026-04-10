@@ -97,6 +97,10 @@ function saveConfigData(configData) {
 
 const configData = loadConfigData();
 
+if (configData.antiMassMention === undefined) {
+  configData.antiMassMention = false;
+}
+
 
 const warnsData = loadWarnsData();
 
@@ -130,6 +134,26 @@ client.on('guildMemberAdd', async (member) => {
 client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
+    if (configData.antiMassMention) {
+      const mentionCount =
+        message.mentions.users.size +
+        message.mentions.roles.size;
+
+      if (
+        message.mentions.everyone ||
+        mentionCount >= 5
+      ) {
+        try {
+          await message.delete().catch(() => null);
+
+          return message.channel.send(
+            `🚫 ${message.author}, les mentions massives sont interdites.`
+          );
+        } catch (error) {
+          console.error("Erreur anti-mass mention :", error);
+        }
+      }
+    }
     if (!message.guild) return;
     if (!message.content.startsWith(PREFIX)) return;
 
@@ -723,6 +747,31 @@ client.on('messageCreate', async (message) => {
 
     }
 
+
+    if (command === '!antimassmention') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      configData.antiMassMention = true;
+      saveConfigData(configData);
+
+      return message.reply("✅ Anti-mass mention ACTIVÉ.");
+    }
+
+
+    if (command === '!noantimassmention') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      configData.antiMassMention = false;
+      saveConfigData(configData);
+
+      return message.reply("❌ Anti-mass mention DÉSACTIVÉ.");
+    }
+
+
     if (command === '!help') {
       return message.reply(
         `Commandes disponibles :\n\n` +
@@ -752,6 +801,9 @@ client.on('messageCreate', async (message) => {
         `Infos :\n` +
         `!userinfo @user\n` +
         `!serverinfo\n\n`
+        `Antispam :\n` +
+        `!antimassmention\n` +
+        `!noantimassmention\n\n`
 
       );
     }
