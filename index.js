@@ -512,6 +512,95 @@ client.on('messageCreate', async (message) => {
 
 
 
+    if (command === '!clear') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const amount = parseInt(args[1], 10);
+
+      if (isNaN(amount) || amount < 1 || amount > 100) {
+        return message.reply("Utilise : `!clear nombre` avec un nombre entre 1 et 100.");
+      }
+
+      try {
+        await message.channel.bulkDelete(amount, true);
+        const confirm = await message.channel.send(`✅ ${amount} message(s) supprimé(s).`);
+        setTimeout(() => confirm.delete().catch(() => {}), 3000);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le clear.");
+      }
+    }
+
+
+    if (command === '!purge') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      try {
+        let deleted = 0;
+
+        while (true) {
+          const fetched = await message.channel.messages.fetch({ limit: 100 });
+          if (fetched.size === 0) break;
+
+          const toDelete = fetched.filter(msg => (Date.now() - msg.createdTimestamp) < 14 * 24 * 60 * 60 * 1000);
+          if (toDelete.size === 0) break;
+
+          await message.channel.bulkDelete(toDelete, true);
+          deleted += toDelete.size;
+
+          if (toDelete.size < 2) break;
+        }
+
+        const confirm = await message.channel.send(`✅ Purge terminée. ${deleted} message(s) supprimé(s).`);
+        setTimeout(() => confirm.delete().catch(() => {}), 4000);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant la purge.");
+      }
+    }
+
+
+    if (command === '!lock') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      try {
+        await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+          SendMessages: false
+        });
+
+        return message.reply(`🔒 Salon verrouillé.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le lock.");
+      }
+    }
+
+
+    if (command === '!unlock') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      try {
+        await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+          SendMessages: true
+        });
+
+        return message.reply(`🔓 Salon déverrouillé.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le unlock.");
+      }
+    }
+
+
+
     if (command === '!unloopban') {
       const user = message.mentions.users.first();
       if (!user) {
