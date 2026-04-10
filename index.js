@@ -108,12 +108,22 @@ client.once('ready', () => {
 
 client.on('guildMemberAdd', async (member) => {
   try {
+
     if (loopbanList.has(member.id)) {
       await member.ban({ reason: 'Loopban actif' });
-      console.log(`Ban automatique de ${member.user.tag} (${member.id})`);
+      console.log(`Ban automatique de ${member.user.tag}`);
+      return;
     }
+
+
+    if (configData.serverLocked) {
+      await member.kick('Serveur temporairement lock');
+      console.log(`${member.user.tag} kick car serveur lock`);
+      return;
+    }
+
   } catch (error) {
-    console.error(`Erreur lors du ban auto de ${member.user.tag}:`, error);
+    console.error(`Erreur guildMemberAdd :`, error);
   }
 });
 
@@ -600,7 +610,7 @@ client.on('messageCreate', async (message) => {
     }
 
 
-    if (command === '!lockserver') {
+    if (command === '!lockall') {
       if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
         return message.reply("⛔ Pas la permission.");
       }
@@ -622,13 +632,13 @@ client.on('messageCreate', async (message) => {
         return message.reply(`🔒 Serveur verrouillé sur ${count} salon(s).`);
       } catch (error) {
         console.error(error);
-        return message.reply("❌ Erreur pendant le lockserver.");
+        return message.reply("❌ Erreur pendant le lockall.");
       }
     }
 
 
 
-    if (command === '!unlockserver') {
+    if (command === '!unlockall') {
       if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
         return message.reply("⛔ Pas la permission.");
       }
@@ -650,7 +660,7 @@ client.on('messageCreate', async (message) => {
         return message.reply(`🔓 Serveur déverrouillé sur ${count} salon(s).`);
       } catch (error) {
         console.error(error);
-        return message.reply("❌ Erreur pendant le unlockserver.");
+        return message.reply("❌ Erreur pendant le unlockall.");
       }
     }
 
@@ -689,6 +699,29 @@ client.on('messageCreate', async (message) => {
     }
 
 
+    if (command === '!lockserver') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      configData.serverLocked = true;
+      saveConfigData(configData);
+
+      return message.reply("🔒 Serveur verrouillé : les nouveaux membres seront automatiquement kick.");
+    }
+
+
+    if (command === '!unlockserver') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      configData.serverLocked = false;
+      saveConfigData(configData);
+
+      return message.reply("🔓 Serveur déverrouillé : les membres peuvent rejoindre normalement.");
+
+    }
 
     if (command === '!help') {
       return message.reply(
@@ -711,6 +744,8 @@ client.on('messageCreate', async (message) => {
         `!lock\n` +
         `!unlock\n` +
         `!lockserver\n` +
+        `!lockall\n` +
+        `!unlockall\n` +
         `!unlockserver\n\n` +
         `Config :\n` +
         `!setmuterole @role\n\n` +
