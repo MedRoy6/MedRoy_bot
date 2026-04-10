@@ -16,6 +16,7 @@ const client = new Client({
   ]
 });
 const WARNS_FILE = path.join(__dirname, 'warns.json');
+const CONFIG_FILE = path.join(__dirname, 'config.json');
 const PREFIX = '!';
 const DATA_FILE = path.join(__dirname, 'loopban.json');
 
@@ -71,6 +72,32 @@ function saveWarnsData(warnsData) {
     console.error('Erreur sauvegarde warns.json :', error);
   }
 }
+
+function loadConfigData() {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) {
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify({}, null, 2));
+    }
+
+    const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('Erreur chargement config.json :', error);
+    return {};
+  }
+}
+
+function saveConfigData(configData) {
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(configData, null, 2));
+  } catch (error) {
+    console.error('Erreur sauvegarde config.json :', error);
+  }
+}
+
+const configData = loadConfigData();
+
+
 const warnsData = loadWarnsData();
 
 const loopbanList = loadLoopbanData();
@@ -344,6 +371,145 @@ client.on('messageCreate', async (message) => {
 
       return message.reply(`✅ Tous les warns de ${member.user.tag} ont été supprimés.`);
     }
+
+
+
+    if (command === '!setmuterole') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const role = message.mentions.roles.first();
+      if (!role) {
+        return message.reply("Utilise : `!setmuterole @role`");
+      }
+
+      configData.muteRoleId = role.id;
+      saveConfigData(configData);
+
+      return message.reply(`✅ Rôle mute défini sur ${role.name}`);
+    }
+
+
+
+    if (command === '!mute') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!mute @utilisateur`");
+      }
+
+      const muteRoleId = configData.muteRoleId;
+      if (!muteRoleId) {
+        return message.reply("❌ Aucun rôle mute défini. Utilise `!setmuterole @role`");
+      }
+
+      const muteRole = message.guild.roles.cache.get(muteRoleId);
+      if (!muteRole) {
+        return message.reply("❌ Le rôle mute configuré n'existe plus.");
+      }
+
+      if (member.roles.cache.has(muteRole.id)) {
+        return message.reply("ℹ️ Cet utilisateur est déjà mute.");
+      }
+
+      try {
+        await member.roles.add(muteRole, `Mute par ${message.author.tag}`);
+        return message.reply(`✅ ${member.user.tag} a été mute.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le mute.");
+      }
+    }
+
+
+    if (command === '!unmute') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!unmute @utilisateur`");
+      }
+
+      const muteRoleId = configData.muteRoleId;
+      if (!muteRoleId) {
+        return message.reply("❌ Aucun rôle mute défini.");
+      }
+
+      const muteRole = message.guild.roles.cache.get(muteRoleId);
+      if (!muteRole) {
+        return message.reply("❌ Le rôle mute configuré n'existe plus.");
+      }
+
+      if (!member.roles.cache.has(muteRole.id)) {
+        return message.reply("ℹ️ Cet utilisateur n'est pas mute.");
+      }
+
+      try {
+        await member.roles.remove(muteRole, `Unmute par ${message.author.tag}`);
+        return message.reply(`✅ ${member.user.tag} a été unmute.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le unmute.");
+      }
+    }
+
+
+
+    if (command === '!tempmute') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!tempmute @utilisateur duréeEnMinutes`");
+      }
+
+      const minutes = parseInt(args[2], 10);
+      if (isNaN(minutes) || minutes <= 0) {
+        return message.reply("❌ Donne une durée valide en minutes.");
+      }
+
+      const muteRoleId = configData.muteRoleId;
+      if (!muteRoleId) {
+        return message.reply("❌ Aucun rôle mute défini. Utilise `!setmuterole @role`");
+      }
+
+      const muteRole = message.guild.roles.cache.get(muteRoleId);
+      if (!muteRole) {
+        return message.reply("❌ Le rôle mute configuré n'existe plus.");
+      }
+
+      if (member.roles.cache.has(muteRole.id)) {
+        return message.reply("ℹ️ Cet utilisateur est déjà mute.");
+      }
+
+      try {
+        await member.roles.add(muteRole, `Tempmute par ${message.author.tag} pour ${minutes} min`);
+        message.reply(`✅ ${member.user.tag} a été mute pour ${minutes} minute(s).`);
+
+        setTimeout(async () => {
+          try {
+            const target = await message.guild.members.fetch(member.id).catch(() => null);
+            if (target && target.roles.cache.has(muteRole.id)) {
+              await target.roles.remove(muteRole, 'Fin du tempmute');
+            }
+          } catch (error) {
+            console.error('Erreur fin tempmute :', error);
+          }
+        }, minutes * 60 * 1000);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le tempmute.");
+      }
+    }
+
 
 
     if (command === '!unloopban') {
