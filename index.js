@@ -792,22 +792,20 @@ client.on('messageCreate', async (message) => {
         `!purge\n` +
         `!lock\n` +
         `!unlock\n` +
-        `!lockserver\n` +
         `!lockall\n` +
         `!unlockall\n` +
+        `!lockserver\n` +
         `!unlockserver\n\n` +
+        `Protection :\n` +
+        `!antimassmention\n` +
+        `!noantimassmention\n\n` +
         `Config :\n` +
         `!setmuterole @role\n\n` +
         `Infos :\n` +
         `!userinfo @user\n` +
-        `!serverinfo\n\n`
-        `Antispam :\n` +
-        `!antimassmention\n` +
-        `!noantimassmention\n\n`
-
-      );
-    }
-
+        `!serverinfo\n\n` +
+  );
+}
 
     if (command === '!unloopban') {
       const user = message.mentions.users.first();
