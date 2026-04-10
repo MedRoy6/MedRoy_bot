@@ -130,6 +130,100 @@ client.on('messageCreate', async (message) => {
       }
     }
 
+
+    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!ban @utilisateur`");
+      }
+
+      if (!member.bannable) {
+        return message.reply("❌ Je ne peux pas bannir cet utilisateur.");
+      }
+
+      try {
+        await member.ban({ reason: `Ban par ${message.author.tag}` });
+        return message.reply(`✅ ${member.user.tag} a été banni.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le ban.");
+      }
+    }
+
+    if (command === '!unban') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const userId = args[1];
+      if (!userId) {
+        return message.reply("Utilise : `!unban ID_UTILISATEUR`");
+      }
+
+      try {
+        await message.guild.members.unban(userId);
+        return message.reply(`✅ Utilisateur ${userId} débanni.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Impossible de débannir cet utilisateur.");
+      }
+    }
+
+
+
+    if (command === '!kick') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!kick @utilisateur`");
+      }
+
+      if (!member.kickable) {
+        return message.reply("❌ Je ne peux pas expulser cet utilisateur.");
+      }
+
+      try {
+        await member.kick(`Kick par ${message.author.tag}`);
+        return message.reply(`✅ ${member.user.tag} a été expulsé.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le kick.");
+      }
+    }
+
+
+    if (command === '!softban') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const member = message.mentions.members.first();
+      if (!member) {
+        return message.reply("Utilise : `!softban @utilisateur`");
+      }
+
+      if (!member.bannable) {
+        return message.reply("❌ Je ne peux pas softban cet utilisateur.");
+      }
+
+      try {
+        await member.ban({ deleteMessageSeconds: 86400, reason: `Softban par ${message.author.tag}` });
+        await message.guild.members.unban(member.id);
+        return message.reply(`✅ ${member.user.tag} a été softban.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply("❌ Erreur pendant le softban.");
+      }
+    }
+
+
+
     if (command === '!unloopban') {
       const user = message.mentions.users.first();
       if (!user) {
