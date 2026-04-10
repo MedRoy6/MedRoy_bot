@@ -803,9 +803,10 @@ client.on('messageCreate', async (message) => {
         `!setmuterole @role\n\n` +
         `Infos :\n` +
         `!userinfo @user\n` +
-        `!serverinfo\n\n` +
-  );
-}
+        `!serverinfo\n\n`
+      );
+    }
+
 
     if (command === '!unloopban') {
       const user = message.mentions.users.first();
