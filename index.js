@@ -97,6 +97,33 @@ function saveConfigData(configData) {
 
 const configData = loadConfigData();
 
+
+
+
+if (configData.antiSpamEnabled === undefined) {
+  configData.antiSpamEnabled = false;
+}
+
+if (!Array.isArray(configData.spamAllowedChannels)) {
+  configData.spamAllowedChannels = [];
+}
+
+saveConfigData(configData);
+
+
+const spamTracker = new Map();
+const spamInfractions = new Map();
+
+
+const SPAM_MESSAGE_LIMIT = 3;
+const SPAM_TIME_WINDOW = 3000;
+
+const SPAM_INFRACTION_RESET = 6 * 24 * 60 * 60 * 1000;
+
+
+
+
+
 if (configData.antiMassMention === undefined) {
   configData.antiMassMention = false;
 }
@@ -167,6 +194,113 @@ client.on('messageDelete', async (message) => {
 client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
+
+    if (
+      configData.antiSpamEnabled &&
+      !configData.spamAllowedChannels.includes(message.channel.id)
+    ) {
+      const isStaff = message.member.permissions.has(
+        PermissionsBitField.Flags.ManageMessages
+      );
+
+      if (!isStaff) {
+        const trackerKey = `${message.guild.id}-${message.author.id}`;
+        const now = Date.now();
+
+        const previousMessages = spamTracker.get(trackerKey) || [];
+
+        const recentMessages = previousMessages.filter(
+          timestamp => now - timestamp < SPAM_TIME_WINDOW
+        );
+
+        recentMessages.push(now);
+        spamTracker.set(trackerKey, recentMessages);
+
+        if (recentMessages.length >= SPAM_MESSAGE_LIMIT) {
+          spamTracker.set(trackerKey, []);
+
+          const previousInfraction = spamInfractions.get(trackerKey);
+
+          let infractionCount = 1;
+
+          if (
+            previousInfraction &&
+            now - previousInfraction.lastInfraction < SPAM_INFRACTION_RESET
+          ) {
+            infractionCount = previousInfraction.count + 1;
+          }
+
+          spamInfractions.set(trackerKey, {
+            count: infractionCount,
+            lastInfraction: now
+          });
+
+          const recentChannelMessages = await message.channel.messages
+            .fetch({ limit: 20 })
+            .catch(() => null);
+
+          if (recentChannelMessages) {
+            const spamMessages = recentChannelMessages.filter(
+              msg =>
+                msg.author.id === message.author.id &&
+                now - msg.createdTimestamp < SPAM_TIME_WINDOW
+            );
+
+            if (spamMessages.size > 0) {
+              await message.channel
+                .bulkDelete(spamMessages, true)
+                .catch(() => null);
+            }
+          }
+
+          if (infractionCount >= 3) {
+            spamInfractions.delete(trackerKey);
+
+            if (!message.member.kickable) {
+              await message.channel.send(
+                `${message.author}, tu as atteint 3 infractions, mais je ne peux pas t'expulser à cause de la hiérarchie des rôles.`
+              );
+
+              await sendLog(
+                message.guild,
+                `🚨 Kick anti-spam impossible\n` +
+                `Utilisateur : ${message.author.tag} (${message.author.id})\n` +
+                `Salon : ${message.channel}\n` +
+                `Raison : rôle supérieur ou permission insuffisante`
+              );
+
+              return;
+            }
+
+            await sendLog(
+              message.guild,
+              `👢 Kick anti-spam\n` +
+              `Utilisateur : ${message.author.tag} (${message.author.id})\n` +
+              `Salon : ${message.channel}\n` +
+              `Raison : Jt'avais prévenu`
+            );
+
+            await message.member.kick("Jt'avais prévenu");
+            return;
+          }
+
+          await message.channel.send(
+            `${message.author}, Arrête ou jt’arrête. Avertissement ${infractionCount}/3.`
+          );
+
+          await sendLog(
+            message.guild,
+            `⚠️ Avertissement anti-spam ${infractionCount}/3\n` +
+            `Utilisateur : ${message.author.tag} (${message.author.id})\n` +
+            `Salon : ${message.channel}`
+          );
+
+          return;
+        }
+      }
+    }
+
+
     if (configData.antiMassMention) {
       const mentionCount =
         message.mentions.users.size +
@@ -245,6 +379,130 @@ client.on('messageCreate', async (message) => {
         console.error('Erreur ban immédiat :', error);
         return message.reply(`Loopban activé pour ${user.tag}, mais le ban immédiat a échoué.`);
       }
+    }
+
+
+
+    if (command === '!antispam') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      if (configData.antiSpamEnabled) {
+        return message.reply("ℹ️ L'anti-spam est déjà activé.");
+      }
+
+      configData.antiSpamEnabled = true;
+      saveConfigData(configData);
+
+      await sendLog(
+        message.guild,
+        `🛡️ Anti-spam activé\n` +
+        `Modérateur : ${message.author.tag} (${message.author.id})`
+      );
+
+      return message.reply(
+        "✅ Anti-spam activé : 3 messages en 3 secondes = une infraction."
+      );
+    }
+
+
+
+    if (command === '!noantispam') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      if (!configData.antiSpamEnabled) {
+        return message.reply("ℹ️ L'anti-spam est déjà désactivé.");
+      }
+
+      configData.antiSpamEnabled = false;
+      saveConfigData(configData);
+
+      spamTracker.clear();
+      spamInfractions.clear();
+
+      await sendLog(
+        message.guild,
+        `🛑 Anti-spam désactivé\n` +
+        `Modérateur : ${message.author.tag} (${message.author.id})`
+      );
+
+      return message.reply("❌ Anti-spam désactivé.");
+    }
+
+
+
+
+    if (command === '!spamallow') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const channel = message.mentions.channels.first();
+
+      if (!channel) {
+        return message.reply("Utilise : `!spamallow #salon`");
+      }
+
+      if (configData.spamAllowedChannels.includes(channel.id)) {
+        return message.reply(
+          `ℹ️ Le spam est déjà autorisé dans ${channel}.`
+        );
+      }
+
+      configData.spamAllowedChannels.push(channel.id);
+      saveConfigData(configData);
+
+      await sendLog(
+        message.guild,
+        `✅ Salon autorisé au spam\n` +
+        `Modérateur : ${message.author.tag} (${message.author.id})\n` +
+        `Salon : ${channel}`
+      );
+
+      return message.reply(
+        `✅ Le spam est maintenant autorisé dans ${channel}.`
+      );
+    }
+
+
+
+
+
+    if (command === '!spamdeny') {
+      if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        return message.reply("⛔ Pas la permission.");
+      }
+
+      const channel = message.mentions.channels.first();
+
+      if (!channel) {
+        return message.reply("Utilise : `!spamdeny #salon`");
+      }
+
+      if (!configData.spamAllowedChannels.includes(channel.id)) {
+        return message.reply(
+          `ℹ️ L'anti-spam est déjà actif dans ${channel}.`
+        );
+      }
+
+      configData.spamAllowedChannels =
+        configData.spamAllowedChannels.filter(id => id !== channel.id);
+
+      saveConfigData(configData);
+
+      await sendLog(
+        message.guild,
+        `🛡️ Salon retiré des exceptions anti-spam\n` +
+        `Modérateur : ${message.author.tag} (${message.author.id})\n` +
+        `Salon : ${channel}`
+      );
+
+      return message.reply(
+        `✅ L'anti-spam est de nouveau actif dans ${channel}.`
+      );
     }
 
 
@@ -942,6 +1200,13 @@ client.on('messageCreate', async (message) => {
         `Protection :\n` +
         `!antimassmention\n` +
         `!noantimassmention\n\n` +
+        `Protection :\n` +
+        `!antispam — active l'anti-spam\n` +
+        `!noantispam — désactive l'anti-spam\n` +
+        `!spamallow #salon — autorise le spam dans un salon\n` +
+        `!spamdeny #salon — réactive l'anti-spam dans un salon\n` +
+        `!antimassmention — active l'anti-mass mention\n` +
+        `!noantimassmention — désactive l'anti-mass mention\n\n` +
         `Config :\n` +
         `!setlogs #salon\n` +
         `!setmuterole @role\n\n` +
