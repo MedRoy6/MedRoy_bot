@@ -254,7 +254,6 @@ client.on('messageCreate', async (message) => {
           }
 
           if (infractionCount >= 3) {
-            spamInfractions.delete(trackerKey);
 
             if (!message.member.bannable) {
               await message.channel.send(
@@ -278,9 +277,11 @@ client.on('messageCreate', async (message) => {
               `Utilisateur : ${message.author.tag} (${message.author.id})\n` +
               `Salon : ${message.channel}\n` +
               `Raison : Jt'avais prévenu`
+              
             );
-
+            console.log("Bannable :", message.member.bannable);
             await message.member.ban("Jt'avais prévenu");
+            spamInfractions.delete(trackerKey);
             return;
           }
 
