@@ -280,7 +280,9 @@ client.on('messageCreate', async (message) => {
               
             );
             console.log("Bannable :", message.member.bannable);
-            await message.member.ban("Jt'avais prévenu");
+            await message.member.ban({
+              reason: "Jt'avais prévenu"
+            });
             spamInfractions.delete(trackerKey);
             return;
           }
@@ -1331,7 +1333,7 @@ client.on('messageCreate', async (message) => {
     }
   } catch (error) {
     console.error('Erreur commande :', error);
-    return message.reply("Une erreur s'est produite.");
+    return message.channel.send("Une erreur s'est produite.").catch(() => null);
   }
 });
 
