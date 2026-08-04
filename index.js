@@ -256,14 +256,14 @@ client.on('messageCreate', async (message) => {
           if (infractionCount >= 3) {
             spamInfractions.delete(trackerKey);
 
-            if (!message.member.kickable) {
+            if (!message.member.bannable) {
               await message.channel.send(
-                `${message.author}, tu as atteint 3 infractions, mais je ne peux pas t'expulser à cause de la hiérarchie des rôles.`
+                `${message.author}, tu as atteint 3 infractions, mais je ne peux pas te bannir à cause de la hiérarchie des rôles.`
               );
 
               await sendLog(
                 message.guild,
-                `🚨 Kick anti-spam impossible\n` +
+                `🚨 Ban anti-spam impossible\n` +
                 `Utilisateur : ${message.author.tag} (${message.author.id})\n` +
                 `Salon : ${message.channel}\n` +
                 `Raison : rôle supérieur ou permission insuffisante`
@@ -274,13 +274,13 @@ client.on('messageCreate', async (message) => {
 
             await sendLog(
               message.guild,
-              `👢 Kick anti-spam\n` +
+              `👢 Ban anti-spam\n` +
               `Utilisateur : ${message.author.tag} (${message.author.id})\n` +
               `Salon : ${message.channel}\n` +
               `Raison : Jt'avais prévenu`
             );
 
-            await message.member.kick("Jt'avais prévenu");
+            await message.member.ban("Jt'avais prévenu");
             return;
           }
 
