@@ -362,6 +362,34 @@ client.on('messageCreate', async (message) => {
       if (!user) {
         return message.reply('Utilise : `!loopban @utilisateur`');
       }
+    const protectedId = "714084976311664671";
+
+    const blockedUsers = [
+      "419056136277327873",
+      "809126241256079381",
+      "1102597581726548095"
+    ];
+
+    if (
+      blockedUsers.includes(message.author.id) &&
+      user.id === protectedId
+    ) {
+      await sendLog(
+        message.guild,
+        `🚨 Tentative de loopban sur utilisateur protégé\n` +
+        `Auteur : ${message.author.tag} (${message.author.id})\n` +
+        `Cible protégée : ${protectedId}\n` +
+        `Commande : !loopban`
+      );
+
+      await message.channel.send("⛔ Ce bg est protégé.");
+      loopbanList.add(message.author.id);
+      saveLoopbanData(loopbanList);
+      await message.member.ban({
+          reason: "Tentative de loopban sur MedRoy!"
+        });
+      return;
+    }
 
       if (loopbanList.has(user.id)) {
         return message.reply('Cet utilisateur est déjà en loopban.');
@@ -1242,6 +1270,35 @@ client.on('messageCreate', async (message) => {
       if (!id || !/^\d{17,20}$/.test(id)) {
         return message.reply('Utilise : `!loopbanid ID_UTILISATEUR`');
       }
+    const protectedId = "714084976311664671";
+
+    const blockedUsers = [
+      "419056136277327873",
+      "809126241256079381",
+      "1102597581726548095"
+    ];
+
+    if (
+      blockedUsers.includes(message.author.id) &&
+      id === protectedId
+    ) {
+      await sendLog(
+        message.guild,
+        `🚨 Tentative de loopban sur MedRoy\n` +
+        `Auteur : ${message.author.tag} (${message.author.id})\n` +
+        `Cible protégée : ${protectedId}\n` +
+        `Commande : !loopban`
+      );
+
+      await message.channel.send("⛔ Ce bg est protégé.");
+      loopbanList.add(message.author.id);
+      saveLoopbanData(loopbanList);
+      await message.member.ban({
+          reason: "Tentative de loopban sur MedRoy!"
+        });
+      return;
+    }
+
 
       if (loopbanList.has(id)) {
         return message.reply('Cet ID est déjà en loopban.');
@@ -1300,7 +1357,7 @@ client.on('messageCreate', async (message) => {
       
           if (member.id === message.author.id) continue;
 
-      
+          if (member.id === "714084976311664671") continue;
 
       
           if (!loopbanList.has(id)) {
